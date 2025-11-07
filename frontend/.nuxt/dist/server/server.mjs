@@ -1,0 +1,1 @@
+export { default } from "file:///Volumes/external_ssd/gitRepository/date-course-recommender/frontend/node_modules/@nuxt/vite-builder/dist/runtime/vite-node.mjs"

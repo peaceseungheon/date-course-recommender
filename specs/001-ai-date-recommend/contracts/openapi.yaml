@@ -1,0 +1,219 @@
+openapi: 3.0.3
+info:
+  title: Date Course Recommender API
+  version: 0.1.0
+servers:
+  - url: /api
+paths:
+  /search:
+    get:
+      summary: Search for recommended places and events near a location
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          required: true
+          description: Free-text location (address, neighborhood, or landmark)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 5
+          required: false
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          description: Bad request (e.g., missing q)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /places/{placeId}:
+    get:
+      summary: Get detail for a single place
+      parameters:
+        - in: path
+          name: placeId
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Place detail with events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaceDetailResponse"
+        "404":
+          description: Place not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    Location:
+      type: object
+      properties:
+        place_name:
+          type: string
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+              format: float
+            lon:
+              type: number
+              format: float
+        bounding_box:
+          type: array
+          items:
+            type: number
+          description: [minLon, minLat, maxLon, maxLat]
+
+    QueryInfo:
+      type: object
+      properties:
+        raw_input:
+          type: string
+        normalized_location:
+          $ref: "#/components/schemas/Location"
+
+    Place:
+      type: object
+      required: [id, name, category, coordinates]
+      properties:
+        id:
+          type: string
+          description: Provider-specific place id
+        provider:
+          type: string
+          example: kakao
+        name:
+          type: string
+        category:
+          type: string
+          description: One of (cafe, restaurant, park, museum, attraction)
+        address:
+          type: string
+        coordinates:
+          type: object
+          properties:
+            lat:
+              type: number
+              format: float
+            lon:
+              type: number
+              format: float
+        distance_from_query:
+          type: number
+          description: Distance in meters
+        short_description:
+          type: string
+        photo_url:
+          type: string
+          format: uri
+
+    Event:
+      type: object
+      required: [title, summary]
+      properties:
+        id:
+          type: string
+        source_label:
+          type: string
+          example: Wikipedia
+        source_url:
+          type: string
+          format: uri
+        title:
+          type: string
+        summary:
+          type: string
+          maxLength: 500
+        date_or_year:
+          type: string
+          description: ISO date or year
+        relevance_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    Recommendation:
+      type: object
+      properties:
+        place:
+          $ref: "#/components/schemas/Place"
+        rank:
+          type: integer
+        reason_text:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          $ref: "#/components/schemas/QueryInfo"
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recommendation"
+      example:
+        query:
+          raw_input: "서울시 광진구 화양동"
+          normalized_location:
+            place_name: "화양동, 광진구, 서울"
+            coordinates:
+              lat: 37.543
+              lon: 127.070
+        recommendations:
+          - place:
+              id: "kakao_12345"
+              provider: "kakao"
+              name: "뚝섬한강공원"
+              category: "park"
+              address: "서울 광진구"
+              coordinates:
+                lat: 37.537
+                lon: 127.070
+              distance_from_query: 800
+              short_description: "한강공원 산책 및 야경 추천"
+            rank: 1
+            reason_text: "한강 변 산책로가 유명하며 분위기가 좋음"
+            events:
+              - id: "evt_001"
+                source_label: "Wikipedia"
+                source_url: "https://ko.wikipedia.org/wiki/뚝섬"
+                title: "뚝섬 개발 역사"
+                summary: "뚝섬 지역은 19XX년에 ... (요약)"
+                date_or_year: "1980"
+
+    PlaceDetailResponse:
+      type: object
+      properties:
+        place:
+          $ref: "#/components/schemas/Place"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
